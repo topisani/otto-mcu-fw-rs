@@ -13,6 +13,7 @@ use defmt_rtt as _;
 use embassy::executor::Spawner;
 use embassy::time::{Duration, Timer};
 use embassy_stm32::gpio::{AnyPin, Input, Level, Output, Pin, Pull, Speed};
+use embassy_stm32::pac::AFIO;
 use embassy_stm32::Peripherals;
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 use keys::KeyMatrix;
@@ -35,6 +36,10 @@ defmt::timestamp! {
 
 #[embassy::main]
 async fn main(spawner: Spawner, p: Peripherals) {
+    // We use PB3 and PB4 for the keyboard matrix, so disable JTAG (keeping SWD enabled).
+    unsafe {
+        AFIO.mapr().modify(|m| m.set_swj_cfg(010u8));
+    }
     let km = KeyMatrix::new(
         [
             p.PC9.degrade(),
