@@ -5,10 +5,11 @@
 #![feature(generic_const_exprs)]
 #![feature(generators, generator_trait)]
 
+mod i2c;
 mod input;
 mod keys;
-mod util;
 mod leds;
+mod util;
 
 use defmt::{info, unwrap};
 use defmt_rtt as _;
@@ -18,7 +19,7 @@ use embassy_stm32::dma::NoDma;
 use embassy_stm32::gpio::{Level, Output, Pin, Speed};
 use embassy_stm32::pac::AFIO;
 use embassy_stm32::time::U32Ext;
-use embassy_stm32::{peripherals, spi, Config, Peripherals};
+use embassy_stm32::{interrupt, peripherals, spi, Config, Peripherals};
 use embedded_hal::digital::v2::OutputPin;
 use keys::KeyMatrix;
 // global logger
@@ -46,7 +47,6 @@ fn config() -> Config {
     config.rcc.pclk2 = Some(48.mhz().into());
     config.rcc.adcclk = Some(12.mhz().into());
     config
-
 }
 
 type Leds = leds::Ws2812<spi::Spi<'static, peripherals::SPI1, NoDma, NoDma>>;
@@ -106,13 +106,21 @@ async fn main(spawner: Spawner, p: Peripherals) {
         3.mhz(),
         spi_config,
     );
-    
+    let leds = leds::Ws2812::new(spi);
+
+    let i2c = i2c::I2cSlave::new(
+        p.I2C1,
+        p.PB6,
+        p.PB7,
+        interrupt::take!(I2C1_EV),
+        interrupt::take!(I2C1_ER),
+        0x77,
+    );
+
     // We use PB3 and PB4 for the keyboard matrix, so disable JTAG (keeping SWD enabled).
     unsafe {
         AFIO.mapr().modify(|m| m.set_swj_cfg(010u8));
     }
-
-    let leds = leds::Ws2812::new(spi);
 
     unwrap!(spawner.spawn(input::poll_input(km)));
     unwrap!(spawner.spawn(test_leds(leds)));

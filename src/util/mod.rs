@@ -1,2 +1,2 @@
-pub mod bitarray;
 pub mod arraymap;
+pub mod bitarray;

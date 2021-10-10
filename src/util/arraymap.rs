@@ -37,11 +37,13 @@ macro_rules! map_impl {
 }
 
 impl<U, V> ArrayMap<U, V, [V; 0]> for [U; 0] {
-    fn map<F: Fn(&U) -> V>(&self, _: F) -> [V; 0] { [] }
+    fn map<F: Fn(&U) -> V>(&self, _: F) -> [V; 0] {
+        []
+    }
 }
 
-map_impl!{32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
-          15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
+map_impl! {32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16,
+15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
 
 #[cfg(test)]
 mod tests {
@@ -49,7 +51,7 @@ mod tests {
 
     #[test]
     fn empty_array() {
-        let x : [u8; 0] = [];
+        let x: [u8; 0] = [];
         assert_eq!(x, x.map(|_| unreachable!()));
     }
 }

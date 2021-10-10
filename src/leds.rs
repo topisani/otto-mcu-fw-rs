@@ -10,22 +10,19 @@ pub struct Ws2812<SPI> {
     spi: SPI,
 }
 
-// 
+//
 
 impl<SPI> Ws2812<SPI>
 where
     SPI: embedded_hal::blocking::spi::Write<u8>,
 {
-    
     /// Use ws2812 devices via spi
     ///
     /// The SPI bus should run within 2 MHz to 3.8 MHz
     pub fn new(spi: SPI) -> Self {
-        Self {
-            spi,
-        }
+        Self { spi }
     }
-    
+
     /// Write a single byte for ws2812 devices
     async fn write_byte(&mut self, mut data: u8) -> Result<(), SPI::Error> {
         // Send two bits in one spi byte. High time first, then the low time
