@@ -5,6 +5,7 @@
 #![feature(generic_const_exprs)]
 #![feature(generators, generator_trait)]
 
+mod cmd;
 mod i2c;
 mod input;
 mod keys;
@@ -21,6 +22,7 @@ use embassy_stm32::pac::AFIO;
 use embassy_stm32::time::U32Ext;
 use embassy_stm32::{interrupt, peripherals, spi, Config, Peripherals};
 use embedded_hal::digital::v2::OutputPin;
+use futures::pin_mut;
 use keys::KeyMatrix;
 // global logger
 use panic_probe as _;
@@ -108,14 +110,19 @@ async fn main(spawner: Spawner, p: Peripherals) {
     );
     let leds = leds::Ws2812::new(spi);
 
-    let i2c = i2c::I2cSlave::new(
-        p.I2C1,
-        p.PB6,
-        p.PB7,
-        interrupt::take!(I2C1_EV),
-        interrupt::take!(I2C1_ER),
-        0x77,
-    );
+    let mut i2cstate = i2c::State::new();
+    let mut i2c = unsafe {
+        // Safety: 
+        i2c::I2cSlave::new_unchecked(
+            &mut i2cstate,
+            p.I2C1,
+            p.PB6,
+            p.PB7,
+            interrupt::take!(I2C1_EV),
+            interrupt::take!(I2C1_ER),
+            0x77,
+        )
+    };
 
     // We use PB3 and PB4 for the keyboard matrix, so disable JTAG (keeping SWD enabled).
     unsafe {
@@ -123,14 +130,11 @@ async fn main(spawner: Spawner, p: Peripherals) {
     }
 
     unwrap!(spawner.spawn(input::poll_input(km)));
-    unwrap!(spawner.spawn(test_leds(leds)));
+    // unwrap!(spawner.spawn(test_leds(leds)));
     let mut led = Output::new(p.PC6, Level::High, Speed::Low);
 
     loop {
-        unwrap!(led.set_high());
-        Timer::after(Duration::from_millis(300)).await;
-
-        unwrap!(led.set_low());
-        Timer::after(Duration::from_millis(300)).await;
+        let packet = i2c.receive_message().await;
+        info!("Got packet: {}", packet);
     }
 }
